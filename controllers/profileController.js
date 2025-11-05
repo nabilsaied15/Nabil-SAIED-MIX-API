@@ -2,6 +2,14 @@ const Profile = require('../models/Profile.model');
 const { pool } = require('../config/db.postgres');
 
 const profileController = {
+  listProfiles: async (req, res) => {
+    try {
+      const profiles = await Profile.find({});
+      res.json(profiles);
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
   getProfile: async (req, res) => {
     const { userId } = req.params;
     
