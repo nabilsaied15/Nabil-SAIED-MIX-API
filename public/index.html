@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bookly+ Dashboard</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
+    header { margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    section { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; }
+    code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; }
+    ul { margin: 0; padding-left: 18px; }
+    .muted { color: #6b7280; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Bookly+ (SQL + NoSQL)</h1>
+    <p class="muted">Aperçu rapide de l'API. Backend sur <code>/</code>, endpoints sous <code>/api/*</code>.</p>
+    <p>
+      Base URL: <code id="baseUrl"></code>
+    </p>
+  </header>
+
+  <div class="grid">
+    <section>
+      <h2>Statut API</h2>
+      <pre id="rootStatus">Chargement...</pre>
+    </section>
+
+    <section>
+      <h2>Users</h2>
+      <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+        <input id="userName" placeholder="name" />
+        <input id="userEmail" placeholder="email" />
+        <button id="addUser">Ajouter</button>
+      </div>
+      <div id="usersList" class="muted">Chargement...</div>
+      <button id="refreshUsers">Rafraîchir</button>
+    </section>
+
+    <section>
+      <h2>Books</h2>
+      <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+        <input id="bookTitle" placeholder="title" />
+        <input id="bookAuthor" placeholder="author" />
+        <label style="display:flex; align-items:center; gap:6px;">
+          <input id="bookAvailable" type="checkbox" checked /> disponible
+        </label>
+        <button id="addBook">Ajouter</button>
+      </div>
+      <div id="booksList" class="muted">Chargement...</div>
+      <button id="refreshBooks">Rafraîchir</button>
+    </section>
+
+    <section>
+      <h2>Profiles</h2>
+      <button id="refreshProfiles">Rafraîchir</button>
+      <pre id="profiles">Chargement...</pre>
+    </section>
+  </div>
+
+  <script>
+    const baseUrl = `${location.protocol}//${location.host}`;
+    document.getElementById('baseUrl').textContent = baseUrl;
+
+    async function loadJson(path) {
+      const res = await fetch(path);
+      if (!res.ok) throw new Error(`${path} -> ${res.status}`);
+      return res.json();
+    }
+
+    async function init() {
+      try {
+        const root = await loadJson('/');
+        document.getElementById('rootStatus').textContent = JSON.stringify(root, null, 2);
+      } catch (e) {
+        document.getElementById('rootStatus').textContent = String(e);
+      }
+
+      await Promise.all([
+        refreshUsers(),
+        refreshBooks(),
+        refreshProfiles(),
+      ]);
+    }
+
+    function htmlesc(s){
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+      return (s ?? '').toString().replace(/[&<>"]/g, ch => map[ch]);
+    }
+    function rowActions(buttons){
+      const wrapper = document.createElement('span');
+      wrapper.style.marginLeft = '8px';
+      buttons.forEach(b=>wrapper.appendChild(b));
+      return wrapper;
+    }
+
+    async function refreshUsers() {
+      const list = document.getElementById('usersList');
+      list.textContent = 'Chargement...';
+      try {
+        const data = await loadJson('/api/users');
+        list.innerHTML = '';
+        if (!Array.isArray(data) || data.length === 0){ list.textContent = 'Aucun user'; return; }
+        const ul = document.createElement('ul');
+        data.forEach(u => {
+          const li = document.createElement('li');
+          li.textContent = `#${u.id} ${u.name} <${u.email}>`;
+
+          const editBtn = document.createElement('button'); editBtn.textContent='Modifier'; editBtn.onclick = async () => {
+            const name = prompt('Nouveau nom:', u.name); if (name===null) return;
+            const email = prompt('Nouvel email:', u.email); if (email===null) return;
+            const res = await fetch(`/api/users/${u.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, email })});
+            if (!res.ok) return alert('Erreur mise à jour');
+            refreshUsers();
+          };
+
+          const delBtn = document.createElement('button'); delBtn.textContent='Supprimer'; delBtn.onclick = async () => {
+            if (!confirm('Supprimer cet utilisateur ?')) return;
+            const res = await fetch(`/api/users/${u.id}`, { method:'DELETE' });
+            if (!res.ok) return alert('Erreur suppression');
+            refreshUsers();
+          };
+
+          li.appendChild(rowActions([editBtn, delBtn]));
+          ul.appendChild(li);
+        });
+        list.appendChild(ul);
+      } catch (e) { list.textContent = String(e); }
+    }
+
+    async function refreshBooks() {
+      const list = document.getElementById('booksList');
+      list.textContent = 'Chargement...';
+      try {
+        const data = await loadJson('/api/books');
+        list.innerHTML = '';
+        if (!Array.isArray(data) || data.length === 0){ list.textContent = 'Aucun livre'; return; }
+        const ul = document.createElement('ul');
+        data.forEach(b => {
+          const li = document.createElement('li');
+          li.textContent = `#${b.id} ${b.title} — ${b.author} (${b.available ? 'dispo' : 'indispo'})`;
+
+          const editBtn = document.createElement('button'); editBtn.textContent='Modifier'; editBtn.onclick = async () => {
+            const title = prompt('Nouveau titre:', b.title); if (title===null) return;
+            const author = prompt('Nouvel auteur:', b.author); if (author===null) return;
+            const available = confirm('Disponible ? OK=Oui / Annuler=Non');
+            const res = await fetch(`/api/books/${b.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title, author, available })});
+            if (!res.ok) return alert('Erreur mise à jour');
+            refreshBooks();
+          };
+
+          const delBtn = document.createElement('button'); delBtn.textContent='Supprimer'; delBtn.onclick = async () => {
+            if (!confirm('Supprimer ce livre ?')) return;
+            const res = await fetch(`/api/books/${b.id}`, { method:'DELETE' });
+            if (!res.ok) return alert('Erreur suppression');
+            refreshBooks();
+          };
+
+          li.appendChild(rowActions([editBtn, delBtn]));
+          ul.appendChild(li);
+        });
+        list.appendChild(ul);
+      } catch (e) { list.textContent = String(e); }
+    }
+
+    async function refreshProfiles() {
+      const el = document.getElementById('profiles');
+      el.textContent = 'Chargement...';
+      try {
+        const data = await loadJson('/api/profiles/user-full/1');
+        el.textContent = JSON.stringify(data, null, 2);
+      } catch (e) { el.textContent = String(e); }
+    }
+
+    document.getElementById('refreshUsers').addEventListener('click', refreshUsers);
+    document.getElementById('refreshBooks').addEventListener('click', refreshBooks);
+    document.getElementById('refreshProfiles').addEventListener('click', refreshProfiles);
+
+    document.getElementById('addUser').addEventListener('click', async () => {
+      const name = document.getElementById('userName').value.trim();
+      const email = document.getElementById('userEmail').value.trim();
+      if(!name||!email) return alert('Nom et email requis');
+      const res = await fetch('/api/users', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, email })});
+      if (!res.ok) return alert('Erreur création user');
+      document.getElementById('userName').value='';
+      document.getElementById('userEmail').value='';
+      refreshUsers();
+    });
+
+    document.getElementById('addBook').addEventListener('click', async () => {
+      const title = document.getElementById('bookTitle').value.trim();
+      const author = document.getElementById('bookAuthor').value.trim();
+      const available = document.getElementById('bookAvailable').checked;
+      if(!title||!author) return alert('Titre et auteur requis');
+      const res = await fetch('/api/books', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title, author, available })});
+      if (!res.ok) return alert('Erreur création livre');
+      document.getElementById('bookTitle').value='';
+      document.getElementById('bookAuthor').value='';
+      document.getElementById('bookAvailable').checked=true;
+      refreshBooks();
+    });
+
+    init();
+  </script>
+  
+</body>
+</html>
+
