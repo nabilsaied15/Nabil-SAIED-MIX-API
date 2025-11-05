@@ -1,7 +1,6 @@
 const { pool } = require('../config/db.postgres');
 
 const userController = {
-  // GET tous les utilisateurs
   getAllUsers: async (req, res) => {
     try {
       const result = await pool.query('SELECT * FROM users ORDER BY id');
@@ -11,7 +10,6 @@ const userController = {
     }
   },
 
-  // POST créer un utilisateur
   createUser: async (req, res) => {
     const { name, email } = req.body;
     
@@ -26,7 +24,6 @@ const userController = {
     }
   },
 
-  // GET un utilisateur par ID
   getUserById: async (req, res) => {
     const { id } = req.params;
     

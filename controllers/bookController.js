@@ -1,7 +1,6 @@
 const { pool } = require('../config/db.postgres');
 
 const bookController = {
-  // GET tous les livres
   getAllBooks: async (req, res) => {
     try {
       const result = await pool.query('SELECT * FROM books ORDER BY id');
@@ -11,7 +10,6 @@ const bookController = {
     }
   },
 
-  // POST créer un livre
   createBook: async (req, res) => {
     const { title, author, available = true } = req.body;
     
