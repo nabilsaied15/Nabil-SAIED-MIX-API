@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 const { initPostgres } = require('./config/db.postgres');
 const connectMongo = require('./config/db.mongo');
