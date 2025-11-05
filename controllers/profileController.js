@@ -2,7 +2,6 @@ const Profile = require('../models/Profile.model');
 const { pool } = require('../config/db.postgres');
 
 const profileController = {
-  // GET profil par userId
   getProfile: async (req, res) => {
     const { userId } = req.params;
     
@@ -19,12 +18,10 @@ const profileController = {
     }
   },
 
-  // POST créer un profil
   createProfile: async (req, res) => {
     const { userId, preferences = [], history = [] } = req.body;
     
     try {
-      // Vérifier si l'utilisateur existe en SQL
       const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
       
       if (userResult.rows.length === 0) {
@@ -44,7 +41,6 @@ const profileController = {
     }
   },
 
-  // PUT mettre à jour un profil
   updateProfile: async (req, res) => {
     const { userId } = req.params;
     const { preferences, history } = req.body;
@@ -69,12 +65,10 @@ const profileController = {
     }
   },
 
-  // GET données complètes utilisateur (SQL + NoSQL)
   getUserFullData: async (req, res) => {
     const { id } = req.params;
     
     try {
-      // Récupérer données SQL
       const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
       
       if (userResult.rows.length === 0) {
@@ -83,7 +77,6 @@ const profileController = {
 
       const user = userResult.rows[0];
 
-      // Récupérer données MongoDB
       const profile = await Profile.findOne({ userId: parseInt(id) });
 
       res.json({
